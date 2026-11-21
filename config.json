@@ -1,0 +1,10 @@
+{
+  "search": "https://duckduckgo.com/?q=%s",
+  "keywords": {
+    "g": "https://www.google.com/search?q=%s",
+    "gh": "https://github.com/search?q=%s",
+    "w": "https://en.wikipedia.org/w/index.php?search=%s",
+    "yt": "https://www.youtube.com/results?search_query=%s",
+    "mdn": "https://developer.mozilla.org/en-US/search?q=%s"
+  }
+}

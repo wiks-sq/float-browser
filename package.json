@@ -1,0 +1,121 @@
+{
+  "name": "float",
+  "version": "0.1.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --linux deb",
+    "dist:appimage": "electron-builder --linux AppImage",
+    "dist:deb": "electron-builder --linux deb",
+    "dist:win": "node -e \"if (process.platform !== 'win32') { console.error('Build the Windows installer on Windows: it packages the Electron installed in node_modules, which is platform-specific.'); process.exit(1); }\" && electron-builder --win nsis"
+  },
+  "license": "MIT",
+  "description": "A canvas web browser: every page is a window on one infinite plane.",
+  "devDependencies": {
+    "electron": "github:castlabs/electron-releases#v41.10.7+wvcus",
+    "electron-builder": "^26.18.0"
+  },
+  "productName": "Float",
+  "dependencies": {
+    "@ghostery/adblocker-electron": "^2.20.3",
+    "electron-chrome-extensions": "^4.10.0",
+    "electron-chrome-web-store": "^0.13.0",
+    "electron-updater": "^6.8.11",
+    "tldts-experimental": "^7.5.5"
+  },
+  "author": {
+    "name": "wiks-sq",
+    "url": "https://github.com/wiks-sq"
+  },
+  "build": {
+    "appId": "app.float.browser",
+    "productName": "Float",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "afterSign": "build/evs-sign.js",
+    "files": [
+      "main.js",
+      "preload.js",
+      "guest-preload.js",
+      "renderer.js",
+      "panels.js",
+      "index.html",
+      "style.css",
+      "config.json",
+      "lib/**",
+      "build/icon.png",
+      "package.json",
+      "assets/**"
+    ],
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "icon": "build/icons",
+      "category": "Network;WebBrowser",
+      "executableName": "float",
+      "mimeTypes": [
+        "x-scheme-handler/http",
+        "x-scheme-handler/https",
+        "text/html"
+      ],
+      "desktop": {
+        "entry": {
+          "Name": "Float",
+          "Comment": "A canvas web browser",
+          "StartupWMClass": "float"
+        }
+      },
+      "syncDesktopName": true
+    },
+    "deb": {
+      "maintainer": "wiks-sq <https://github.com/wiks-sq>",
+      "depends": [
+        "libnss3",
+        "libatk-bridge2.0-0",
+        "libgtk-3-0",
+        "libxss1",
+        "libgbm1"
+      ]
+    },
+    "appImage": {
+      "artifactName": "Float-${version}-${arch}.AppImage"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "wiks-sq",
+      "repo": "float-browser",
+      "releaseType": "release"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png",
+      "executableName": "Float"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Float",
+      "artifactName": "Float-Setup-${version}.exe"
+    }
+  },
+  "homepage": "https://github.com/wiks-sq/float-browser",
+  "desktopName": "float.desktop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wiks-sq/float-browser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wiks-sq/float-browser/issues"
+  },
+  "funding": "https://buymeacoffee.com/wikssq"
+}
