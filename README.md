@@ -167,7 +167,7 @@ Every shortcut can be changed in **Settings → Shortcuts** (`Ctrl ,`).
 
 **Canvas**
 - Infinite pan-and-zoom canvas with momentum, and a "show everything" view.
-- **Window bar** along the top: every open window as a tab, with its icon, title and space colour.
+- **Window bar** along the top: every open window as a tab, with its title and space colour.
   Windows you can currently see are highlighted; click one to fly there. Can be switched off in
   Settings → General.
 - Your layout is saved and restored on start. Restored windows load only when you go to them,

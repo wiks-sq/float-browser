@@ -1292,7 +1292,7 @@ window.drift.onExtensionsChanged(refreshExtBar);
 refreshExtBar();
 
 // ---------------------------------------------------------------- window bar (top)
-// One tab per open window, in the order they were opened. Click: fly to it (or, while a
+// One tab per open window (title only, no icons, to keep the bar calm), in the order they were opened. Click: fly to it (or, while a
 // window fills the screen, show this one full instead). Middle-click or ×: close.
 const tabBar = { el: $('#tabbar'), list: $('#tabbar .tabs') };
 let tabsQueued = false;
@@ -1313,7 +1313,7 @@ function renderTabs() {
     if (!t) {
       t = document.createElement('div');
       t.className = 'tab'; t.dataset.id = w.id; t.setAttribute('role', 'button');
-      t.innerHTML = '<span class="ic"><img alt=""></span><span class="tt"></span><span class="snd"></span><button class="x" title="Close (Ctrl W)">×</button>';
+      t.innerHTML = '<span class="tt"></span><span class="snd"></span><button class="x" title="Close (Ctrl W)">×</button>';
       t.addEventListener('click', (e) => {
         if (e.target.closest('.x')) return closeWin(w);
         if (fullWin) return fullWin === w ? null : enterFull(w);
@@ -1327,10 +1327,6 @@ function renderTabs() {
     const label = w.title || (w.url ? hostOf(w.url) : 'New window');
     $('.tt', t).textContent = label;
     t.title = w.url ? `${w.title || ''}${w.title ? '\n' : ''}${w.url}` : 'New window';
-    const img = $('img', t), ic = $('.ic', t);
-    if (w.favicon && img.getAttribute('src') !== w.favicon) img.src = w.favicon;
-    ic.classList.toggle('on', !!w.favicon && !img.dataset.bad);
-    ic.dataset.l = (label.replace(/^www\./, '')[0] || '·').toUpperCase();
     $('.snd', t).textContent = w.muted ? '🔇' : w.audible ? '🔊' : '';
     t.classList.toggle('active', w === active);
     t.classList.toggle('paused', !!w.paused);
@@ -1353,7 +1349,6 @@ function markOnScreen() {
     t.classList.toggle('seen', seen);
   }
 }
-tabBar.list.addEventListener('error', (e) => { if (e.target.tagName === 'IMG') { e.target.dataset.bad = 1; e.target.parentElement.classList.remove('on'); } }, true);
 tabBar.list.addEventListener('wheel', (e) => { if (!e.ctrlKey && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); tabBar.list.scrollLeft += e.deltaY; } }, { passive: false });
 $('.tb-new', tabBar.el).onclick = () => openSpotlight();
 tabBar.el.addEventListener('dblclick', (e) => { if (!e.target.closest('.tab, button')) openSpotlight(); });
