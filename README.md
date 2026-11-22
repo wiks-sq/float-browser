@@ -26,7 +26,7 @@
 
 Float replaces tabs with space. Pages open as windows on a canvas you can pan and zoom like a
 map. Keep a research topic in one corner and work in another. Zoom out to see everything at
-once, and fly to any page with a double-click. Your layout is saved and comes back exactly as
+once, and fly to any page from the bar along the top. Your layout is saved and comes back exactly as
 you left it.
 
 It's also a browser that shows its work. For any page, you can see every request it made, what
@@ -125,7 +125,7 @@ The basics:
 - **`Ctrl T`** opens the spotlight. Type an address or a search and press Enter for a new
   window. Press Enter with nothing typed for an empty window with the start page.
 - **Drag empty space** to move around. **Ctrl + scroll** or **pinch** to zoom.
-- **`Ctrl 0`** shows everything. **Double-click a window** to fly to it.
+- **`Ctrl 0`** shows everything. **Click a tab** in the top bar, or a window's ⌖ focus button, to fly to it.
 
 ### Moving around
 
@@ -151,7 +151,8 @@ The basics:
 | Double-click empty space | New empty window right there |
 | Right-click empty space | New window here, history, reopen closed, show all, zoom 100% |
 | Drag the title bar / an edge or corner | Move / resize |
-| Double-click a window that isn't selected | Fly the view to it |
+| Click inside a window | Select it (the view stays where it is) |
+| Click its tab in the top bar, or its focus button (⌖) | Fly the view to it |
 | `Ctrl Tab` / `Ctrl Shift Tab` | Fly to the next / previous window |
 | `Ctrl W` · `Ctrl Shift T` | Close · reopen the last closed window |
 | `Ctrl L` · `Ctrl R` · `Alt ←/→` · `Ctrl F` | Address bar · reload · back/forward · find in page |

@@ -6,7 +6,6 @@
 const { ipcRenderer } = require('electron');
 
 window.addEventListener('pointerdown', () => ipcRenderer.sendToHost('activate'), true);
-window.addEventListener('dblclick', () => ipcRenderer.sendToHost('dblclick'), true);
 
 window.addEventListener('wheel', (e) => {
   if (!e.ctrlKey) return;

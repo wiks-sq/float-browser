@@ -560,8 +560,13 @@ function openTabForExtension(url, active = true) {
 ipcMain.on('tab-ready', (_e, { reqId, wcId }) => { const w = tabWaiters.get(reqId); if (w) { tabWaiters.delete(reqId); w(wcId); } });
 ipcMain.on('tab-active', (_e, wcId) => {
   const wc = wcId && webContents.fromId(wcId);
-  if (wc && extensions && wc.session === sessions.get(PARTITION)) extensions.selectTab(wc);
+  if (!(wc && extensions && wc.session === sessions.get(PARTITION))) return;
+  // The library answers by calling our selectTab hook below; that echo of the user's own
+  // click must not fly the view, so mark it as ours while it runs.
+  selectingFromFloat = wc.id;
+  try { extensions.selectTab(wc); } finally { selectingFromFloat = 0; }
 });
+let selectingFromFloat = 0;
 
 // ---- Mute / pause ----
 function sendAudio(wc) {
@@ -596,7 +601,9 @@ function setupExtensions(ses) {
   extensions = new ElectronChromeExtensions({
     session: ses,
     createTab: (details) => openTabForExtension(details.url, details.active !== false),
-    selectTab: (wc) => send('cmd', { cmd: 'focus-win', wcId: wc.id }),
+    // An extension asked to show a tab (chrome.tabs.update({ active: true })): fly to it.
+    // Not when it's only echoing the window the user just selected in Float.
+    selectTab: (wc) => { if (wc.id !== selectingFromFloat) send('cmd', { cmd: 'focus-win', wcId: wc.id }); },
     removeTab: (wc) => send('cmd', { cmd: 'close', wcId: wc.id }),
     createWindow: async (details) => { await openTabForExtension([].concat(details.url || [])[0], details.focused !== false); return win; },
     removeWindow: () => {}, // the canvas is the only window; never close it for an extension

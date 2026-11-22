@@ -436,7 +436,6 @@ function createWin(o = {}) {
   $('.b-site', el).onclick = () => openSiteInfo(w);
 
   el.addEventListener('pointerdown', () => setActive(w), true);
-  el.addEventListener('dblclick', (e) => { if (!e.target.closest('.bar, .rz, .perm, button')) dblclickFocus(w); });
 
   // Title bar: drag to move; a click on the (unfocused) address field focuses it.
   w.bar.addEventListener('pointerdown', (e) => {
@@ -616,7 +615,6 @@ function hookWebview(w, wv) {
   wv.addEventListener('ipc-message', (e) => {
     const [arg] = e.args;
     if (e.channel === 'activate') setActive(w);
-    else if (e.channel === 'dblclick') dblclickFocus(w);
     else if (e.channel === 'nav') arg === 'back' ? wv.canGoBack() && wv.goBack() : wv.canGoForward() && wv.goForward();
     else if (e.channel === 'textzoom') pageZoom(w, arg.dy < 0 ? 1.1 : 1 / 1.1);
     else if (e.channel === 'zoom') {
@@ -766,12 +764,6 @@ function reload(w, hard) {
   if (!w.wv) return w.url && load(w, w.url);
   w.err.hidden = true;
   hard ? w.wv.reloadIgnoringCache() : w.wv.reload();
-}
-
-// Double-clicking a window that wasn't selected (the first click just selected it),
-// or any window while zoomed far out, flies the view to it.
-function dblclickFocus(w) {
-  if (performance.now() - (w.activatedAt || 0) < 800 || cam.z < 0.5) focusWin(w);
 }
 
 function setActive(w, focus = false) {
