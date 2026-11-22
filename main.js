@@ -79,6 +79,7 @@ const SETTINGS_DEFAULTS = {
   search: null, keywords: null, // null = use config.json / Float's default
   downloads: { dir: '', ask: false },
   spellcheck: true,
+  tabBar: true, // the bar of open windows along the top
   startPage: 'drift', // what a new empty window shows: 'drift' (start page), 'blank', or a URL
   start: { top: true, stats: true }, // start page sections
   startHidden: [], // sites removed from the start page's most visited
@@ -119,6 +120,7 @@ function loadConfig() {
     search: s.search || file.search || SEARCH_ENGINES.duckduckgo.url,
     keywords: s.keywords || file.keywords || {},
     startPage: s.startPage || 'drift',
+    tabBar: s.tabBar !== false,
   };
 }
 
@@ -677,7 +679,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
   if ('dns' in patch) applyDns();
   if ('spellcheck' in patch) for (const ses of sessions.values()) ses.setSpellCheckerEnabled(!!s.spellcheck);
   if ('shortcuts' in patch) matchShortcut = shortcuts.matcher(s.shortcuts);
-  if ('search' in patch || 'keywords' in patch || 'startPage' in patch) send('config-changed', loadConfig());
+  if ('search' in patch || 'keywords' in patch || 'startPage' in patch || 'tabBar' in patch) send('config-changed', loadConfig());
   return publicSettings();
 });
 ipcMain.handle('settings:get', (_e, url, wcId) => {

@@ -145,6 +145,7 @@ The basics:
 | Do this | To |
 |---|---|
 | `Ctrl T` | Spotlight: address or search, plus history, places, open windows and commands (↑↓, Enter) |
+| Click a tab in the bar along the top | Fly to that window (middle-click or × closes it; ＋ opens a new one) |
 | `Ctrl Shift N` | New private window |
 | `Ctrl Shift F` / the ⤢ button in the title bar | The window fills the screen (canvas hidden); press again to go back exactly where you were |
 | Double-click empty space | New empty window right there |
@@ -164,6 +165,9 @@ Every shortcut can be changed in **Settings → Shortcuts** (`Ctrl ,`).
 
 **Canvas**
 - Infinite pan-and-zoom canvas with momentum, and a "show everything" view.
+- **Window bar** along the top: every open window as a tab, with its icon, title and space colour.
+  Windows you can currently see are highlighted; click one to fly there. Can be switched off in
+  Settings → General.
 - Your layout is saved and restored on start. Restored windows load only when you go to them,
   so a big canvas stays cheap.
 - **Places:** save a view and its windows under a name, then fly back later. Float offers to

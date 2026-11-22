@@ -399,6 +399,8 @@ async function sGeneral(pane) {
   pane.append(optRow('Ask where to save each file', '', switchEl(d.downloads.ask, (v) => setSet({ downloads: { ask: v } }))));
   pane.append(optRow('Spell check', 'Underlines misspelled words; right-click for suggestions.', switchEl(d.spellcheck, (v) => setSet({ spellcheck: v }))));
 
+  pane.append(optRow('Window bar', 'A bar along the top listing every open window. Click one to fly to it.', switchEl(d.tabBar !== false, (v) => setSet({ tabBar: v }))));
+
   // What a new empty window shows
   pane.append(el('h3', '', 'New windows'));
   const sp = el('div', 'stack');
@@ -601,7 +603,7 @@ async function sAbout(pane) {
 }
 
 // Keep the UI's copy of the search engine in sync when settings change it.
-window.drift.onConfigChanged((c) => { config = { ...config, ...c }; refreshStarts(); });
+window.drift.onConfigChanged((c) => { config = { ...config, ...c }; setTabBar(config.tabBar !== false); refreshStarts(); });
 
 // ---- Updates (packaged builds only) ----
 function renderUpdates(box, u, s) {

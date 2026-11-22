@@ -14,6 +14,8 @@ const spaceInfo = (id) => (id === 'private' ? { id, name: 'Private', color: '#a2
 const MIN_Z = 0.04, MAX_Z = 2.5, GRID = 40, GAP = 40, MIN_W = 320, MIN_H = 200;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const W = () => window.innerWidth, H = () => window.innerHeight;
+// Height of the window bar along the top (0 when it's switched off): the visible canvas starts below it.
+const TOP = () => (document.body.classList.contains('tabs') ? 36 : 0);
 
 let config = { search: 'https://duckduckgo.com/?q=%s', keywords: {} };
 if (/^Mac/.test(navigator.platform)) document.documentElement.classList.add('mac');
@@ -105,7 +107,7 @@ function invalidate() { if (!dirty) { dirty = true; requestAnimationFrame(render
 
 function render() {
   dirty = false;
-  if (fullWin) { cam.x = fullWin.x; cam.y = fullWin.y; cam.z = 1; place(fullWin); }
+  if (fullWin) { cam.x = fullWin.x; cam.y = fullWin.y - TOP(); cam.z = 1; place(fullWin); }
   const { x, y, z } = cam;
   world.style.transform = `translate(${-x * z}px, ${-y * z}px) scale(${z})`;
   world.style.setProperty('--inv', 1 / z);
@@ -126,6 +128,7 @@ function render() {
   hint.hidden = wins.length > 0;
   lazyLoad();
   scheduleSave();
+  markOnScreen();
 }
 
 // ---------------------------------------------------------------- camera motion
@@ -137,14 +140,14 @@ function centerOn(cx, cy, tz = cam.z, ms = 320) {
   if (fullWin) exitFull();
   stopMotion();
   tz = clamp(tz, MIN_Z, MAX_Z);
-  const w = W(), h = H();
-  if (!ms) { cam.z = tz; cam.x = cx - w / 2 / tz; cam.y = cy - h / 2 / tz; return invalidate(); }
-  const z0 = cam.z, x0 = cam.x + w / 2 / z0, y0 = cam.y + h / 2 / z0, t0 = performance.now();
+  const w = W(), oy = TOP() + (H() - TOP()) / 2; // screen y of the visible area's centre
+  if (!ms) { cam.z = tz; cam.x = cx - w / 2 / tz; cam.y = cy - oy / tz; return invalidate(); }
+  const z0 = cam.z, x0 = cam.x + w / 2 / z0, y0 = cam.y + oy / z0, t0 = performance.now();
   const tick = (now) => {
     const t = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - t, 3);
     cam.z = z0 * Math.pow(tz / z0, e);
     cam.x = x0 + (cx - x0) * e - w / 2 / cam.z;
-    cam.y = y0 + (cy - y0) * e - h / 2 / cam.z;
+    cam.y = y0 + (cy - y0) * e - oy / cam.z;
     invalidate();
     motion = t < 1 ? requestAnimationFrame(tick) : 0;
   };
@@ -187,8 +190,8 @@ function onWheel(e) {
   else panBy(e.deltaX, e.deltaY, e.deltaMode);
 }
 
-const viewCenter = () => toWorld(W() / 2, H() / 2);
-const fitZoom = (w, h, margin = 80) => Math.min(1, (W() - margin) / w, (H() - margin) / h);
+const viewCenter = () => toWorld(W() / 2, TOP() + (H() - TOP()) / 2);
+const fitZoom = (w, h, margin = 80) => Math.min(1, (W() - margin) / w, (H() - TOP() - margin) / h);
 
 // ---- Full-window mode: one window fills Float's whole window at 100% zoom ----
 // The page isn't moved in the DOM (a <webview> would reload): render() pins the camera
@@ -248,7 +251,7 @@ function isFocused(w) {
 function reveal(w) {
   if (w === fullWin) return; // it already fills the screen
   const sx = (w.x - cam.x) * cam.z, sy = (w.y - cam.y) * cam.z;
-  const visible = sx >= 0 && sy >= 0 && sx + w.w * cam.z <= W() && sy + w.h * cam.z <= H();
+  const visible = sx >= 0 && sy >= TOP() && sx + w.w * cam.z <= W() && sy + w.h * cam.z <= H();
   if (!visible || cam.z < 0.5) focusWin(w);
 }
 
@@ -488,13 +491,14 @@ function createWin(o = {}) {
 
 function place(w) {
   const s = w.el.style, full = w === fullWin;
-  const ww = full ? W() : w.w, hh = full ? H() : w.h;
+  const ww = full ? W() : w.w, hh = full ? H() - TOP() : w.h;
   s.left = w.x + 'px'; s.top = w.y + 'px'; s.width = ww + 'px'; s.height = hh + 'px';
   s.setProperty('--ww', ww);
 }
 
 // Space colour stripe + name chip (nothing for the main space unless spaces exist).
 function applySpace(w) {
+  scheduleTabs();
   const sp = spaceInfo(w.space), chip = $('.space-chip', w.el);
   w.el.style.setProperty('--space', sp.color);
   w.el.classList.toggle('in-space', !!w.space || spaces.spaces.length > 0);
@@ -531,6 +535,7 @@ function moveToSpace(w, space) {
 }
 
 function showTitle(w) {
+  scheduleTabs();
   if (document.activeElement !== w.input) w.input.value = w.title || w.url;
   w.label.textContent = w.title || w.url || 'New window';
   $('.t', w.ph).textContent = w.url ? (w.title || w.url) : 'Type an address or search above';
@@ -544,6 +549,7 @@ function showTitle(w) {
 }
 
 function setFavicon(w, src) {
+  scheduleTabs();
   w.favicon = src || '';
   w.fav.classList.toggle('on', !!src);
   if (src) w.fav.src = src; else w.fav.removeAttribute('src');
@@ -655,6 +661,7 @@ window.drift.onPermission((req) => {
 // ---------------------------------------------------------------- mute / pause
 const SPEAKER = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6h2.3L8 3.3v9.4L4.8 10H2.5z" fill="currentColor"/>';
 function updateAudio(w) {
+  scheduleTabs();
   const show = w.muted || w.audible;
   w.audioBtn.hidden = !show;
   if (!show) return;
@@ -665,6 +672,7 @@ function updateAudio(w) {
 
 // Paused windows show a dimmed snapshot; the page itself is gone until resumed.
 function pauseWin(w, snapshot) {
+  scheduleTabs();
   if (!w.wv) return;
   dismissPerms(w);
   if (findWin === w) closeFind();
@@ -686,6 +694,7 @@ function pauseWin(w, snapshot) {
   updateAudio(w); showTitle(w); scheduleSave();
 }
 function resumeWin(w) {
+  scheduleTabs();
   if (!w.paused) return;
   w.paused = false;
   w.el.classList.remove('paused');
@@ -777,6 +786,7 @@ function setActive(w, focus = false) {
       w.el.style.zIndex = w.z; // z-index only: moving a <webview> in the DOM would reload it
     }
     scheduleSave();
+    scheduleTabs();
   }
   if (w && focus) (w.wv ? w.wv : w.input).focus({ preventScroll: true });
 }
@@ -792,6 +802,7 @@ function closeWin(w) {
   if (fullWin === w) exitFull();
   wins.splice(i, 1);
   w.el.remove();
+  scheduleTabs();
   if (w.space === 'private' && !wins.some((o) => o.space === 'private')) window.drift.privateClosed();
   if (active === w) {
     active = null;
@@ -1288,6 +1299,73 @@ async function refreshExtBar() { extBar.el.hidden = !(await window.drift.extensi
 window.drift.onExtensionsChanged(refreshExtBar);
 refreshExtBar();
 
+// ---------------------------------------------------------------- window bar (top)
+// One tab per open window, in the order they were opened. Click: fly to it (or, while a
+// window fills the screen, show this one full instead). Middle-click or ×: close.
+const tabBar = { el: $('#tabbar'), list: $('#tabbar .tabs') };
+let tabsQueued = false;
+function scheduleTabs() { if (!tabsQueued) { tabsQueued = true; requestAnimationFrame(renderTabs); } }
+function setTabBar(on) {
+  if (on === document.body.classList.contains('tabs')) return;
+  const keep = viewCenter(); // keep the same spot in the middle of the visible area
+  document.body.classList.toggle('tabs', on);
+  if (!fullWin) centerOn(keep.x, keep.y, cam.z, 0);
+  invalidate(); scheduleTabs(); updateTopReserve();
+}
+function renderTabs() {
+  tabsQueued = false;
+  if (!document.body.classList.contains('tabs')) return;
+  const have = new Map([...tabBar.list.children].map((t) => [+t.dataset.id, t]));
+  for (const w of wins) {
+    let t = have.get(w.id);
+    if (!t) {
+      t = document.createElement('div');
+      t.className = 'tab'; t.dataset.id = w.id; t.setAttribute('role', 'button');
+      t.innerHTML = '<span class="ic"><img alt=""></span><span class="tt"></span><span class="snd"></span><button class="x" title="Close (Ctrl W)">×</button>';
+      t.addEventListener('click', (e) => {
+        if (e.target.closest('.x')) return closeWin(w);
+        if (fullWin) return fullWin === w ? null : enterFull(w);
+        setActive(w, true); focusWin(w);
+      });
+      t.addEventListener('auxclick', (e) => { if (e.button === 1) { e.preventDefault(); closeWin(w); } });
+      t.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); }); // no autoscroll
+    }
+    have.delete(w.id);
+    tabBar.list.append(t); // keeps order; moving these plain elements is cheap
+    const label = w.title || (w.url ? hostOf(w.url) : 'New window');
+    $('.tt', t).textContent = label;
+    t.title = w.url ? `${w.title || ''}${w.title ? '\n' : ''}${w.url}` : 'New window';
+    const img = $('img', t), ic = $('.ic', t);
+    if (w.favicon && img.getAttribute('src') !== w.favicon) img.src = w.favicon;
+    ic.classList.toggle('on', !!w.favicon && !img.dataset.bad);
+    ic.dataset.l = (label.replace(/^www\./, '')[0] || '·').toUpperCase();
+    $('.snd', t).textContent = w.muted ? '🔇' : w.audible ? '🔊' : '';
+    t.classList.toggle('active', w === active);
+    t.classList.toggle('paused', !!w.paused);
+    t.classList.toggle('private', w.space === 'private');
+    t.style.setProperty('--space', w.space ? spaceInfo(w.space).color : 'transparent');
+  }
+  for (const t of have.values()) t.remove();
+  const a = active && tabBar.list.querySelector(`.tab[data-id="${active.id}"]`);
+  if (a) a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  markOnScreen();
+}
+// Tabs of windows you can currently see are brighter.
+function markOnScreen() {
+  if (!document.body.classList.contains('tabs')) return;
+  for (const t of tabBar.list.children) {
+    const w = wins.find((o) => o.id === +t.dataset.id);
+    if (!w) continue;
+    const sx = (w.x - cam.x) * cam.z, sy = (w.y - cam.y) * cam.z;
+    const seen = fullWin ? w === fullWin : sx < W() && sy < H() && sx + w.w * cam.z > 0 && sy + w.h * cam.z > TOP();
+    t.classList.toggle('seen', seen);
+  }
+}
+tabBar.list.addEventListener('error', (e) => { if (e.target.tagName === 'IMG') { e.target.dataset.bad = 1; e.target.parentElement.classList.remove('on'); } }, true);
+tabBar.list.addEventListener('wheel', (e) => { if (!e.ctrlKey && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); tabBar.list.scrollLeft += e.deltaY; } }, { passive: false });
+$('.tb-new', tabBar.el).onclick = () => openSpotlight();
+tabBar.el.addEventListener('dblclick', (e) => { if (!e.target.closest('.tab, button')) openSpotlight(); });
+
 // Room the floating top-right controls (extensions, downloads) take, so a full-screen
 // window's title bar can keep its own buttons clear of them.
 function updateTopReserve() {
@@ -1397,6 +1475,7 @@ window.addEventListener('resize', invalidate);
 
 (async () => {
   try { config = { ...config, ...(await window.drift.config()) }; } catch {}
+  setTabBar(config.tabBar !== false);
   try { spaces = await window.drift.spaces(); } catch {}
   const s = await window.drift.loadSession().catch(() => null);
   if (s && Array.isArray(s.wins)) {
