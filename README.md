@@ -244,8 +244,7 @@ and Settings → About & transparency lists them too.
 
 Everything Float stores is in plain files in `~/.config/Float`: settings, history,
 bookmarks, places, permissions, your canvas, and the start page's blocking counts (kept 7 days).
-Settings has an
-*Open data folder* button.
+Settings has an *Open data folder* button.
 
 ## Platform status
 
