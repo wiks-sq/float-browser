@@ -13,6 +13,7 @@ const pageinfo = require('./lib/pageinfo');
 const setupDownloads = require('./lib/downloads');
 const { setupUpdates } = require('./lib/updates');
 const { setupStats } = require('./lib/stats');
+const { setupBookmarks } = require('./lib/bookmarks');
 
 app.setName('Float');
 const USER_DATA = process.env.FLOAT_USER_DATA || process.env.DRIFT_USER_DATA;
@@ -179,6 +180,7 @@ function contextMenu(wc, p) {
     t.push({ label: 'Open Link Behind', click: () => send('open-window', { url: p.linkURL, fromId: wc.id, background: true }) });
     if (!priv) t.push({ label: 'Open Link in Private Window', click: () => send('open-window', { url: p.linkURL, fromId: wc.id, space: 'private' }) });
     t.push({ label: 'Copy Link Address', click: () => clipboard.writeText(p.linkURL) });
+    t.push({ label: 'Bookmark Link', click: () => send('cmd', { cmd: 'bookmark', arg: { url: p.linkURL, title: (p.linkText || '').trim() } }) });
     t.push({ label: 'Download Linked File', click: () => wc.downloadURL(p.linkURL) });
     sep();
   }
@@ -215,6 +217,7 @@ function contextMenu(wc, p) {
     t.push({ label: 'Back', enabled: nh.canGoBack(), click: () => nh.goBack() });
     t.push({ label: 'Forward', enabled: nh.canGoForward(), click: () => nh.goForward() });
     t.push({ label: 'Reload', click: () => wc.reload() });
+    t.push({ label: 'Bookmark This Page', accelerator: keyLabel('bookmark'), click: () => send('cmd', { cmd: 'bookmark', wcId: wc.id }) });
     t.push({ type: 'separator' });
     t.push({ label: 'Print…', accelerator: keyLabel('print'), click: () => printPage(wc) });
     t.push({ label: 'Save Page As…', click: () => savePage(wc) });
@@ -1078,6 +1081,7 @@ ipcMain.on('session:save', (_e, data) => {
   } catch (err) { console.error('session save failed:', err.message); }
 });
 
+setupBookmarks({ ipcMain, dialog, app, getWin: () => win, file: () => DATA('bookmarks.json'), onChange: () => send('bookmarks-changed') });
 const updates = setupUpdates({ send: (...a) => send(...a), loadSettings });
 const downloads = setupDownloads({
   send, loadSettings, isPrivateSession,

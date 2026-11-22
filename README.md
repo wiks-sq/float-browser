@@ -158,6 +158,7 @@ The basics:
 | `Ctrl W` · `Ctrl Shift T` | Close · reopen the last closed window |
 | `Ctrl L` · `Ctrl R` · `Alt ←/→` · `Ctrl F` | Address bar · reload · back/forward · find in page |
 | `Ctrl H` · `Ctrl J` · `Ctrl D` | History · downloads · save this view as a place |
+| `Ctrl Shift D` · `Ctrl Shift B` | Bookmark this page (again: remove) · your bookmarks |
 | `Ctrl P` · `Ctrl U` · `F12` · `F11` | Print or save as PDF · view source · devtools · fullscreen |
 | Right-click a page → *Pause Window* | Free its memory and keep a snapshot; click to reload |
 
@@ -182,7 +183,12 @@ Every shortcut can be changed in **Settings → Shortcuts** (`Ctrl ,`).
 - Chromium engine (Electron 41 / Chromium 146).
 - **Protected video (Widevine):** Netflix, Spotify, Disney+ and similar play. On Linux, streaming
   services limit browsers to lower resolutions, the same as in Chrome and Firefox.
-- **Start page:** search box, your places, most-visited sites, and this week's blocking count.
+- **Bookmarks:** the ☆ in a window's title bar (or `Ctrl Shift D`) saves the page. They show
+  as plain titles, without site icons, in the spotlight, in their own list (`Ctrl Shift B`,
+  grouped by folder) and on the start page. Import them straight from Chrome, Chromium, Brave,
+  Edge, Vivaldi, Opera or Firefox on the same computer, or from an exported HTML file. Export
+  writes the standard HTML format other browsers import.
+- **Start page:** search box, your bookmarks and places, most-visited sites, and this week's blocking count.
   Built from local data only. Or choose an empty window or any page of your own.
 - Search engine and keywords of your choice (`gh electron` searches GitHub, for example).
 - **Downloads** with progress, pause and resume, and retry. Print and save as PDF, spell check,
@@ -236,8 +242,9 @@ and Settings → About & transparency lists them too.
   start and every 6 hours. You can turn this off in Settings. Updates download only when you click.
 - **Encrypted DNS:** if you turn it on, site lookups go to the provider you chose.
 
-Everything Float stores is in plain files in `~/.config/Float`: settings, history, places,
-permissions, your canvas, and the start page's blocking counts (kept 7 days). Settings has an
+Everything Float stores is in plain files in `~/.config/Float`: settings, history,
+bookmarks, places, permissions, your canvas, and the start page's blocking counts (kept 7 days).
+Settings has an
 *Open data folder* button.
 
 ## Platform status

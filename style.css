@@ -642,3 +642,17 @@ body.tabs #dlbtn span { width: 26px; height: 26px; }
 body.tabs #siteinfo { top: 46px; }
 body.tabs #downloads { top: 46px; }
 body.tabs #hint { top: calc(50% + 18px); }
+
+/* ---- bookmarks: text only, no site icons ---- */
+.bar .b-mark { font-size: 16px; }
+.bar .b-mark.on { color: var(--accent); }
+.menu .item.plain { padding-left: 14px; }
+.st-marks { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-marks .bm {
+  max-width: 220px; padding: 7px 12px; border: 0; border-radius: 9px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--fg); font: inherit; font-size: 13px; font-weight: 500;
+  background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.st-marks .bm:hover { background: rgba(255, 255, 255, .09); }
+.st-allmarks { margin-left: 8px; padding: 0; border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 11px; letter-spacing: 0; text-transform: none; color: var(--accent); }

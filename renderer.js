@@ -204,7 +204,7 @@ const keyFor = (cmd) => keyMap[cmd] || 'no shortcut';
 function loadKeys() {
   return window.drift.shortcuts().then((list) => {
     keyMap = Object.fromEntries(list.map((b) => [b.cmd, (b.keys[0] || '').replace(/\+/g, ' ')]));
-    for (const w of wins) updateFullBtn(w);
+    for (const w of wins) { updateFullBtn(w); if (typeof updateMarkBtn === 'function') updateMarkBtn(w); }
   }).catch(() => {});
 }
 loadKeys();
@@ -413,6 +413,7 @@ function createWin(o = {}) {
       <span class="space-chip" hidden></span>
       <input class="url" spellcheck="false" placeholder="Search or enter address">
       <button class="b-audio" hidden></button>
+      <button class="b-mark" hidden></button>
       <button class="b-focus" title="Focus this window (Ctrl Tab cycles windows)">${FOCUS_ICON}</button>
       <button class="b-full"></button>
       <button class="b-close" title="Close (Ctrl W)">×</button>
@@ -429,7 +430,7 @@ function createWin(o = {}) {
     el, bar: $('.bar', el), input: $('.url', el), fav: $('.fav', el), label: $('.label', el),
     body: $('.body', el), ph: $('.ph', el), err: $('.err', el), audioBtn: $('.b-audio', el),
     muted: !!o.muted, audible: false, paused: !!o.paused, permBox: $('.perms', el), perms: new Map(),
-    back: $('.b-back', el), fwd: $('.b-fwd', el),
+    back: $('.b-back', el), fwd: $('.b-fwd', el), markBtn: $('.b-mark', el),
   });
   el.style.zIndex = w.z;
   applySpace(w);
@@ -456,6 +457,7 @@ function createWin(o = {}) {
   $('.b-close', el).onclick = () => closeWin(w);
   $('.b-focus', el).onclick = () => { setActive(w, true); focusWin(w); };
   $('.b-full', el).onclick = () => toggleFull(w);
+  w.markBtn.onclick = () => toggleBookmark(w);
   w.ph.addEventListener('pointerdown', () => w.url && load(w, w.url));
   w.audioBtn.onclick = () => { w.muted = !w.muted; if (w.wcId) window.drift.setMuted(w.wcId, w.muted); updateAudio(w); };
 
@@ -535,6 +537,7 @@ function moveToSpace(w, space) {
 
 function showTitle(w) {
   scheduleTabs();
+  if (typeof updateMarkBtn === 'function') updateMarkBtn(w);
   if (document.activeElement !== w.input) w.input.value = w.title || w.url;
   w.label.textContent = w.title || w.url || 'New window';
   $('.t', w.ph).textContent = w.url ? (w.title || w.url) : 'Type an address or search above';
@@ -962,9 +965,10 @@ function renderMenu(box, items, getSel, setSel, run) {
     else if (it.header) { el.className = 'hdr'; el.textContent = it.header; }
     else {
       el.className = 'item' + (i === getSel() ? ' sel' : '');
-      el.innerHTML = '<span class="ic"></span><span class="lb"><span class="l"></span><span class="s"></span></span><span class="k"></span>';
+      el.innerHTML = (it.noIcon ? '' : '<span class="ic"></span>') + '<span class="lb"><span class="l"></span><span class="s"></span></span><span class="k"></span>';
+      if (it.noIcon) el.classList.add('plain');
       const ic = $('.ic', el);
-      if (it.favicon) {
+      if (!ic) { /* bookmarks: text only */ } else if (it.favicon) {
         const img = document.createElement('img');
         img.src = it.favicon;
         img.onerror = () => { ic.textContent = it.icon || ''; img.remove(); };
@@ -1013,8 +1017,8 @@ function openSpotlight({ at = null, mode = 'launch', space, prompt } = {}) {
   closeCanvasMenu();
   if (space == null) space = active ? active.space : '';
   sp = { at, mode, space, prompt, items: [], sel: -1, seq: 0, url: active && active.wv ? active.url : '', wcId: active && active.wcId };
-  spot.classList.toggle('history', mode === 'history' || mode === 'places');
-  spInput.placeholder = prompt ? prompt.placeholder : { history: 'Search history', extensions: 'Search extensions', places: 'Search places' }[mode]
+  spot.classList.toggle('history', ['history', 'places', 'bookmarks', 'import'].includes(mode));
+  spInput.placeholder = prompt ? prompt.placeholder : { history: 'Search history', extensions: 'Search extensions', places: 'Search places', bookmarks: 'Search bookmarks', import: 'Import bookmarks from…' }[mode]
     || (space === 'private' ? 'Private window: search or enter address' : 'Search or enter address');
   spInput.value = prompt && prompt.value ? prompt.value : '';
   const chip = $('.space', spot), si = spaceInfo(space);
@@ -1071,6 +1075,27 @@ async function refreshSpotlight() {
     const list = placesMatching(q);
     if (!list.length) items.push({ header: q ? 'No matches' : 'No places yet — press Ctrl D to save the current view' });
     for (const pl of list) items.push(placeItem(pl, true));
+  } else if (sp.mode === 'bookmarks') {
+    const list = bookmarksMatching(q), SHOW = 400;
+    if (!list.length) items.push({ header: q ? 'No matches' : `No bookmarks yet — press ${keyMap.bookmark || 'the ☆ in a window'} to add the page, or import them below` });
+    let folder = null;
+    for (const b of list.slice(0, SHOW)) {
+      if (b.folder !== folder) { folder = b.folder; if (folder || list.some((x) => x.folder)) items.push({ header: folder || 'Bookmarks' }); }
+      items.push(bookmarkItem(b, true));
+    }
+    if (list.length > SHOW) items.push({ header: `Showing ${SHOW} of ${list.length} — type to search` });
+  } else if (sp.mode === 'import') {
+    items.push({ header: 'Looking for other browsers…' });
+    sp.items = items; renderMenu(spList, items, () => -1, () => {}, () => {}); spList.hidden = false;
+    const sources = await window.drift.bookmarkSources();
+    if (!sp || seq !== sp.seq) return;
+    items.length = 0;
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const ok = (t) => terms.every((x) => t.toLowerCase().includes(x));
+    items.push({ header: sources.length ? 'Found on this computer' : 'No other browsers with bookmarks found on this computer' });
+    for (const x of sources) if (ok(x.name)) items.push({ noIcon: true, label: `From ${x.name}`, sub: `${x.count.toLocaleString()} bookmark${x.count === 1 ? '' : 's'}`, keep: true, run: () => runImport(x.id) });
+    items.push({ header: 'Or' });
+    items.push({ noIcon: true, label: 'From a bookmarks file…', sub: 'An HTML file exported from any browser (Firefox, Safari, Chrome…)', keep: true, run: () => runImport('html') });
   } else if (sp.mode === 'history') {
     if (!st.history) items.push({ header: 'History is off — new visits aren’t saved' });
     const hits = await window.drift.historyQuery(q, 300);
@@ -1098,13 +1123,16 @@ async function refreshSpotlight() {
     const winHits = wins.filter((w) => terms.every((t) => (w.title + ' ' + w.url).toLowerCase().includes(t))).slice(0, 3);
     if (winHits.length) items.push({ header: 'Open windows' });
     for (const w of winHits) items.push({ icon: '▢', label: w.title || w.url, sub: 'Switch to window', run: () => { setActive(w, true); focusWin(w); } });
+    const bms = bookmarksMatching(q).slice(0, 4);
+    if (bms.length) items.push({ header: 'Bookmarks' });
+    for (const b of bms) items.push(bookmarkItem(b));
     const pls = placesMatching(q).slice(0, 3);
     if (pls.length) items.push({ header: 'Places' });
     for (const pl of pls) items.push(placeItem(pl));
     const hits = await window.drift.historyQuery(q, 6);
     if (!sp || seq !== sp.seq) return;
     if (hits.length) items.push({ header: 'History' });
-    for (const h of hits) items.push(historyItem(h));
+    for (const h of hits) if (!bms.some((b) => b.url === h.url)) items.push(historyItem(h));
     const cmds = commands(st).filter((c) => terms.every((t) => c.words.some((w) => w.startsWith(t))));
     if (cmds.length) items.push({ header: 'Commands' });
     items.push(...cmds);
@@ -1165,6 +1193,13 @@ function commands(st) {
     add('Print…', 'Ctrl P', 'print pdf', go(() => window.drift.print(target.wcId)));
     add('View page source', 'Ctrl U', 'source html view', go(() => openWindow({ url: 'view-source:' + target.url, parent: target })));
   }
+  if (target && /^(https?|ftp|file):/i.test(target.url)) {
+    const on = bookmarkURLs.has(target.url);
+    add(on ? 'Remove bookmark' : 'Bookmark this page', keyMap.bookmark || '', 'bookmark star favourite favorite save add remove', go(() => toggleBookmark(target)));
+  }
+  add('Bookmarks', keyMap.bookmarks || '', 'bookmarks favourites favorites saved', () => openSpotlight({ at: sp.at, mode: 'bookmarks' }));
+  add('Import bookmarks…', 'From Chrome, Firefox, Brave, Edge or a file', 'bookmarks import chrome firefox brave edge vivaldi opera html', () => openSpotlight({ at: sp.at, mode: 'import' }));
+  add('Export bookmarks…', 'As an HTML file any browser can import', 'bookmarks export backup html', go(exportBookmarks));
   add('Save this place', 'Ctrl D — name the current view', 'place save bookmark', go(savePlacePrompt));
   add('Places', 'Ctrl Shift O', 'places bookmarks saved', () => openSpotlight({ mode: 'places' }));
   add('Open data folder', 'Settings, history, permissions as plain JSON', 'data folder config files json', go(() => window.drift.openDataFolder()));
@@ -1200,6 +1235,9 @@ function renderFooter(st) {
   left.append(sw('History', st.history, st.history ? 'Visits are saved. Click to stop saving history.' : 'History is off. Click to save visits again.', () => toggleHistory(!st.history)));
   left.append(sw('Ad block', st.adblock, st.adblockReady ? 'Block ads and trackers on all sites' : 'Filter lists not loaded yet (needs internet once)', () => toggleAdblock(!st.adblock)));
   if (sp.mode === 'history') left.append(btn('Clear history', 'Delete every saved visit', clearHistory));
+  if (sp.mode === 'bookmarks') left.append(btn('Import…', 'From another browser or a bookmarks file', () => openSpotlight({ at: sp.at, mode: 'import' })),
+    btn('Export…', 'Save every bookmark as an HTML file', () => { closeSpotlight(); exportBookmarks(); }));
+  if (sp.mode === 'import') left.append(btn('‹ Bookmarks', 'Back to your bookmarks', () => openSpotlight({ at: sp.at, mode: 'bookmarks' })));
   if (sp.mode === 'extensions') left.append(btn('Chrome Web Store', 'Install extensions', () => { closeSpotlight(); spOpen(WEB_STORE)(); }));
   if (st.site) {
     const name = document.createElement('span');
@@ -1258,7 +1296,7 @@ spInput.addEventListener('keydown', async (e) => {
   if (!sp) return;
   if (e.key === 'Escape') {
     e.preventDefault();
-    if (sp.mode === 'history' && spInput.value) { spInput.value = ''; return refreshSpotlight(); }
+    if (['history', 'bookmarks', 'places'].includes(sp.mode) && spInput.value) { spInput.value = ''; return refreshSpotlight(); }
     return closeSpotlight();
   }
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -1277,7 +1315,9 @@ spInput.addEventListener('keydown', async (e) => {
   // Shift+Delete forgets the highlighted history entry.
   if (e.key === 'Delete' && e.shiftKey && sp.items[sp.sel]?.url) {
     e.preventDefault();
-    await window.drift.historyRemove(sp.items[sp.sel].url);
+    const it = sp.items[sp.sel];
+    if (it.bookmark) { if (sp.mode !== 'bookmarks') return; await window.drift.removeBookmark(it.bookmark.id); }
+    else await window.drift.historyRemove(it.url);
     refreshSpotlight();
   }
 });
@@ -1419,6 +1459,8 @@ window.drift.onCmd(({ cmd, arg, wcId }) => {
     case 'private': return openSpotlight({ space: 'private' });
     case 'downloads': return toggleDownloads();
     case 'places': return openSpotlight({ mode: 'places' });
+    case 'bookmarks': return openSpotlight({ mode: 'bookmarks' });
+    case 'bookmark': return arg && arg.url ? addBookmarkFor(arg) : w && toggleBookmark(w);
     case 'place': return savePlacePrompt();
     case 'settings': return openSettings();
     case 'site-info': return w && openSiteInfo(w);

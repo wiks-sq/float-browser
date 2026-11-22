@@ -76,6 +76,15 @@ contextBridge.exposeInMainWorld('drift', {
   shortcuts: invoke('shortcuts:list'),
   setShortcut: invoke('shortcuts:set'),
   captureKeys: invoke('shortcuts:capture'),
+  // bookmarks
+  bookmarks: invoke('bookmarks:list'),
+  addBookmark: invoke('bookmarks:add'),
+  removeBookmark: invoke('bookmarks:remove'),
+  renameBookmark: invoke('bookmarks:rename'),
+  bookmarkSources: invoke('bookmarks:sources'),
+  importBookmarks: invoke('bookmarks:import'),
+  exportBookmarks: invoke('bookmarks:export'),
+  onBookmarksChanged: (fn) => ipcRenderer.on('bookmarks-changed', () => fn()),
   // places
   places: invoke('places:get'),
   savePlaces: invoke('places:set'),

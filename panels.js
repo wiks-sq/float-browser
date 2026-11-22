@@ -82,6 +82,74 @@ function goToPlace(pl) {
   }
 }
 
+// ---------------------------------------------------------------- bookmarks
+// Saved pages (main process keeps bookmarks.json; imports come from other browsers).
+// Shown as text only, never with site icons.
+let bookmarks = [], bookmarkURLs = new Set();
+const markable = (url) => /^(https?|ftp|file):/i.test(url || '');
+async function loadBookmarks() {
+  try { bookmarks = await window.drift.bookmarks(); } catch { bookmarks = []; }
+  bookmarkURLs = new Set(bookmarks.map((b) => b.url));
+  wins.forEach(updateMarkBtn);
+  refreshStarts();
+  if (sp && sp.mode === 'bookmarks') refreshSpotlight();
+}
+loadBookmarks();
+window.drift.onBookmarksChanged(loadBookmarks);
+function updateMarkBtn(w) {
+  const b = w.markBtn;
+  if (!b) return;
+  b.hidden = !markable(w.url);
+  const on = bookmarkURLs.has(w.url);
+  b.textContent = on ? '★' : '☆';
+  b.classList.toggle('on', on);
+  const k = keyMap.bookmark ? ` (${keyMap.bookmark})` : '';
+  b.title = on ? 'Bookmarked — click to remove' + k : 'Bookmark this page' + k;
+}
+async function toggleBookmark(w) {
+  if (!w || !markable(w.url)) return;
+  const url = w.url;
+  if (bookmarkURLs.has(url)) {
+    const old = bookmarks.find((b) => b.url === url);
+    await window.drift.removeBookmark(url);
+    toast('Bookmark removed', [{ label: 'Undo', run: () => window.drift.addBookmark(old) }]);
+  } else addBookmarkFor({ url, title: w.title });
+}
+async function addBookmarkFor({ url, title }) {
+  if (!markable(url)) return;
+  const b = await window.drift.addBookmark({ url, title: title || '' });
+  if (b) toast(`Bookmarked “${b.title || hostOf(url)}”`, [{ label: 'Undo', run: () => window.drift.removeBookmark(url) }]);
+}
+// Matching bookmarks, grouped by folder (folders in the order they first appear).
+function bookmarksMatching(q) {
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = bookmarks.filter((b) => terms.every((t) => (b.title + ' ' + b.url + ' ' + b.folder).toLowerCase().includes(t)));
+  const order = new Map();
+  for (const b of hits) if (!order.has(b.folder)) order.set(b.folder, order.size);
+  return hits.map((b, i) => [b, i]).sort((x, y) => order.get(x[0].folder) - order.get(y[0].folder) || x[1] - y[1]).map((x) => x[0]);
+}
+function bookmarkItem(b, manage) {
+  return {
+    noIcon: true, bookmark: b, url: b.url, label: b.title || hostOf(b.url),
+    sub: hostOf(b.url) + (!manage && b.folder ? '  ·  ' + b.folder : ''),
+    run: spOpen(b.url),
+    remove: manage ? async () => { await window.drift.removeBookmark(b.id); } : undefined,
+    removeTitle: 'Remove bookmark',
+  };
+}
+async function runImport(sourceId) {
+  const r = await window.drift.importBookmarks(sourceId);
+  if (!r) return;
+  const dup = r.found - r.added;
+  const msg = r.found ? `Imported ${r.added.toLocaleString()} bookmark${r.added === 1 ? '' : 's'} from ${r.name}${dup ? ` (${dup.toLocaleString()} already saved)` : ''}` : `No bookmarks found in ${r.name}`;
+  if (sp) { openSpotlight({ at: sp.at, mode: 'bookmarks' }); flash(msg); } else toast(msg);
+}
+async function exportBookmarks() {
+  if (!bookmarks.length) return toast('No bookmarks to export yet');
+  const f = await window.drift.exportBookmarks();
+  if (f) toast(`Saved ${bookmarks.length.toLocaleString()} bookmarks to ${f}`);
+}
+
 // ---------------------------------------------------------------- downloads
 const dlBtn = $('#dlbtn'), dlPanel = $('#downloads'), dlList = $('.list', dlPanel);
 let dls = [], dlSpeed = new Map(); // id -> { t, bytes, rate }
@@ -399,6 +467,13 @@ async function sGeneral(pane) {
   pane.append(optRow('Ask where to save each file', '', switchEl(d.downloads.ask, (v) => setSet({ downloads: { ask: v } }))));
   pane.append(optRow('Spell check', 'Underlines misspelled words; right-click for suggestions.', switchEl(d.spellcheck, (v) => setSet({ spellcheck: v }))));
 
+  const bm = el('div', 'row');
+  bm.innerHTML = `<span class="path">${bookmarks.length.toLocaleString()} bookmark${bookmarks.length === 1 ? '' : 's'}</span><button class="im">Import…</button><button class="ex">Export…</button><button class="ls">Show</button>`;
+  $('.im', bm).onclick = () => { closeSettings(); openSpotlight({ mode: 'import' }); };
+  $('.ex', bm).onclick = () => exportBookmarks();
+  $('.ls', bm).onclick = () => { closeSettings(); openSpotlight({ mode: 'bookmarks' }); };
+  pane.append(optRow('Bookmarks', 'Import from Chrome, Firefox, Brave, Edge, Vivaldi, Opera or an exported HTML file. Export saves them as HTML any browser can read.', bm));
+
   pane.append(optRow('Window bar', 'A bar along the top listing every open window. Click one to fly to it.', switchEl(d.tabBar !== false, (v) => setSet({ tabBar: v }))));
 
   // What a new empty window shows
@@ -596,7 +671,7 @@ async function sAbout(pane) {
     </ul>
     <p>Pages you visit see a normal Chrome browser (Google’s sign-in page sees Electron, so sign-in works).</p>
     <h3>Your data</h3>
-    <p>Everything Float keeps is plain files in <code>${esc(a.dataPath)}</code>: <code>settings.json</code>, <code>history.json</code>, <code>permissions.json</code>, <code>places.json</code>, <code>downloads.json</code>, <code>session.json</code> (your canvas), <code>stats.json</code> (the start page’s blocking counts, last 7 days), plus the browser profile itself (cookies and site data).</p>
+    <p>Everything Float keeps is plain files in <code>${esc(a.dataPath)}</code>: <code>settings.json</code>, <code>history.json</code>, <code>permissions.json</code>, <code>bookmarks.json</code>, <code>places.json</code>, <code>downloads.json</code>, <code>session.json</code> (your canvas), <code>stats.json</code> (the start page’s blocking counts, last 7 days), plus the browser profile itself (cookies and site data).</p>
     <button class="open">Open data folder</button></div>`;
   renderUpdates($('.updates', pane), u, s);
   $('.open', pane).onclick = () => window.drift.openDataFolder();
@@ -652,6 +727,7 @@ async function renderStart(w) {
   const chip = (on, label, tip) => `<span class="pchip ${on ? 'on' : 'off'}" title="${esc(tip)}">${on ? '●' : '○'} ${esc(label)}</span>`;
   const placeTiles = priv ? '' : places.slice(0, 6).map((pl, i) => `<button class="pl" data-i="${i}" title="Fly to this place">
       <b>${esc(pl.name)}</b><small>${pl.wins.length} window${pl.wins.length === 1 ? '' : 's'} · ${esc(timeAgo(pl.t))}</small></button>`).join('');
+  const markTiles = priv ? '' : bookmarks.slice(0, 12).map((b, i) => `<button class="bm" data-i="${i}" title="${esc(b.title || b.url)}\n${esc(b.url)}">${esc(b.title || hostOf(b.url))}</button>`).join('');
   const topTiles = priv ? '' : d.top.map((t, i) => `<div class="tile" data-i="${i}" title="${esc(t.title)}\n${esc(t.url)}">
       <span class="mono" style="--h:${tileHue(t.site)}">${esc(t.site[0].toUpperCase())}</span>
       <span class="nm">${esc(t.site)}</span>
@@ -664,6 +740,7 @@ async function renderStart(w) {
     ${priv ? `<div class="st-private"><b>Private window</b>
       <p>Nothing from this window is kept: no history, not saved with your canvas, and its cookies and site data are deleted when you close the last private window. Sites ask again for every permission.</p>
       <p class="muted">Not hidden: your network, your employer or school, and the sites themselves still see your visits. Downloads stay on disk.</p></div>` : ''}
+    ${markTiles ? `<section><h4>Bookmarks${bookmarks.length > 12 ? ' <button class="st-allmarks">All ' + bookmarks.length.toLocaleString() + '</button>' : ''}</h4><div class="st-marks">${markTiles}</div></section>` : ''}
     ${placeTiles ? `<section><h4>Places</h4><div class="st-places">${placeTiles}</div></section>` : ''}
     ${topTiles ? `<section><h4>Most visited</h4><div class="st-top">${topTiles}</div></section>` : ''}
     <div class="st-foot">
@@ -683,6 +760,12 @@ async function renderStart(w) {
   $('.st-search', box).onsubmit = (e) => { e.preventDefault(); const url = toURL(input.value); if (url) load(w, url); };
   input.addEventListener('pointerdown', (e) => { e.stopPropagation(); setActive(w); });
   for (const b of box.querySelectorAll('.pl')) b.onclick = () => goToPlace(places[+b.dataset.i]);
+  for (const b of box.querySelectorAll('.bm')) {
+    const url = bookmarks[+b.dataset.i].url;
+    b.onclick = (e) => { if (e.ctrlKey) openWindow({ url, parent: w, background: true }); else load(w, url); };
+    b.onauxclick = (e) => { if (e.button === 1) openWindow({ url, parent: w, background: true }); };
+  }
+  $('.st-allmarks', box)?.addEventListener('click', () => { setActive(w); openSpotlight({ mode: 'bookmarks' }); });
   for (const t of box.querySelectorAll('.tile')) {
     const item = d.top[+t.dataset.i];
     t.onclick = (e) => {
