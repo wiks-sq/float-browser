@@ -600,3 +600,9 @@ table.reqs.ck th:nth-child(1) { width: 40%; } table.reqs.ck th:nth-child(2) { wi
 .win.full .bar { cursor: default; border-radius: 0; }
 body.fullwin .win:not(.full) { visibility: hidden; }
 body.fullwin #zoombar, body.fullwin .hint { display: none; }
+/* In full-window mode the extension bar and downloads button sit inside the window's title
+   bar; the bar keeps room for them (--top-reserve, measured in renderer.js) so its own
+   buttons stay clickable. */
+body.fullwin #extbar { top: 2px; background: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; }
+body.fullwin #dlbtn { top: 1px; box-shadow: none; }
+.win.full .bar { padding-right: calc(6px + var(--top-reserve, 0px)); }

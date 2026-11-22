@@ -214,6 +214,7 @@ function enterFull(w) {
   setActive(w, true);
   w.el.classList.add('full');
   document.body.classList.add('fullwin');
+  updateTopReserve();
   updateFullBtn(w);
   invalidate();
 }
@@ -1286,6 +1287,19 @@ const extBar = { el: $('#extbar'), list: $('#extbar browser-action-list') };
 async function refreshExtBar() { extBar.el.hidden = !(await window.drift.extensions()).length; }
 window.drift.onExtensionsChanged(refreshExtBar);
 refreshExtBar();
+
+// Room the floating top-right controls (extensions, downloads) take, so a full-screen
+// window's title bar can keep its own buttons clear of them.
+function updateTopReserve() {
+  let left = innerWidth;
+  for (const el of [extBar.el, $('#dlbtn')]) if (!el.hidden) { const r = el.getBoundingClientRect(); if (r.width) left = Math.min(left, r.left); }
+  document.body.style.setProperty('--top-reserve', left < innerWidth ? Math.ceil(innerWidth - left + 6) + 'px' : '0px');
+}
+const topRO = new ResizeObserver(updateTopReserve);
+topRO.observe(extBar.el); topRO.observe($('#dlbtn'));
+new MutationObserver(updateTopReserve).observe($('#dlbtn'), { attributes: true, attributeFilter: ['hidden'] });
+new MutationObserver(updateTopReserve).observe(extBar.el, { attributes: true, attributeFilter: ['hidden'] });
+window.addEventListener('resize', updateTopReserve);
 
 // ---------------------------------------------------------------- zoom bar
 const zoomStep = (f) => { const c = viewCenter(); centerOn(c.x, c.y, cam.z * f, 180); };
