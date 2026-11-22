@@ -1411,7 +1411,13 @@ window.drift.onCmd(({ cmd, arg, wcId }) => {
     case 'audio': if (w) { w.muted = arg.muted; w.audible = arg.audible; updateAudio(w); scheduleSave(); } return;
     case 'pause': return w && pauseWin(w, arg);
     case 'focus-win': if (w) { setActive(w, true); focusWin(w); } return;
-    case 'full-win': return toggleFull(fullWin || w);
+    // First press flies to the window; once it's in view, the next fills the screen with it;
+    // in full-window mode it goes back to the canvas.
+    case 'full-win':
+      if (fullWin) return exitFull();
+      if (!w) return;
+      if (!isFocused(w)) { setActive(w, true); return focusWin(w); }
+      return enterFull(w);
     case 'cycle-next': return cycle(1);
     case 'cycle-prev': return cycle(-1);
     case 'reopen': return reopenClosed();

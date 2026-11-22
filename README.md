@@ -147,7 +147,8 @@ The basics:
 | `Ctrl T` | Spotlight: address or search, plus history, places, open windows and commands (↑↓, Enter) |
 | Click a tab in the bar along the top | Fly to that window (middle-click or × closes it; ＋ opens a new one) |
 | `Ctrl Shift N` | New private window |
-| `Ctrl Shift F` / the ⤢ button in the title bar | The window fills the screen (canvas hidden); press again to go back exactly where you were |
+| `Ctrl Shift F` | First press flies to the selected window; next press makes it fill the screen; again goes back to the canvas exactly where you were |
+| ⤢ button in the title bar | Fill the screen with that window right away (⤡ goes back) |
 | Double-click empty space | New empty window right there |
 | Right-click empty space | New window here, history, reopen closed, show all, zoom 100% |
 | Drag the title bar / an edge or corner | Move / resize |
