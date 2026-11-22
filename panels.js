@@ -550,8 +550,8 @@ async function sShortcuts(pane) {
     const r = el('div', 'row', `<span>${esc(b.label)}</span><span class="keys">${b.keys.map((k) => `<kbd class="${used.get(k).length > 1 ? 'clash' : ''}" title="${used.get(k).length > 1 ? 'Also used by: ' + esc(used.get(k).filter((l) => l !== b.label).join(', ')) : ''}">${esc(k)}</kbd>`).join('') || '<em>none</em>'}</span>
       <button class="ch">Change</button>${b.keys.length ? '<button class="cl" title="Remove shortcut">×</button>' : ''}${b.custom ? '<button class="rs" title="Back to default">Default</button>' : ''}`);
     $('.ch', r).onclick = () => startCapture(b, r);
-    if (b.keys.length) $('.cl', r).onclick = async () => { await window.drift.setShortcut(b.cmd, []); renderSettings(); };
-    if (b.custom) $('.rs', r).onclick = async () => { await window.drift.setShortcut(b.cmd, null); renderSettings(); };
+    if (b.keys.length) $('.cl', r).onclick = async () => { await window.drift.setShortcut(b.cmd, []); renderSettings(); loadKeys(); };
+    if (b.custom) $('.rs', r).onclick = async () => { await window.drift.setShortcut(b.cmd, null); renderSettings(); loadKeys(); };
     t.append(r);
   }
   pane.append(t);
@@ -569,7 +569,7 @@ async function onCapturedKey(accel) {
   const { b } = capture;
   stopCapture();
   if (accel !== 'Escape') {
-    const list = await window.drift.setShortcut(b.cmd, [accel]);
+    const list = await window.drift.setShortcut(b.cmd, [accel]); loadKeys();
     const clash = list.filter((x) => x.cmd !== b.cmd && x.keys.includes(accel));
     toast(clash.length ? `${accel} is also used by “${clash[0].label}” — the first one listed wins` : `${b.label}: ${accel}`);
   }

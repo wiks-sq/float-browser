@@ -146,6 +146,7 @@ The basics:
 |---|---|
 | `Ctrl T` | Spotlight: address or search, plus history, places, open windows and commands (↑↓, Enter) |
 | `Ctrl Shift N` | New private window |
+| `Ctrl Shift F` / the ⤢ button in the title bar | The window fills the screen (canvas hidden); press again to go back exactly where you were |
 | Double-click empty space | New empty window right there |
 | Right-click empty space | New window here, history, reopen closed, show all, zoom 100% |
 | Drag the title bar / an edge or corner | Move / resize |
@@ -167,6 +168,8 @@ Every shortcut can be changed in **Settings → Shortcuts** (`Ctrl ,`).
   so a big canvas stays cheap.
 - **Places:** save a view and its windows under a name, then fly back later. Float offers to
   reopen any window you've since closed.
+- **Fill the screen** with one window (`Ctrl Shift F` or its title-bar button) when you want to
+  focus on a single page, then drop back into the canvas exactly where you left it.
 - Pause a window to free its memory. Per-window mute.
 
 **Browsing**

@@ -593,3 +593,10 @@ table.reqs.ck th:nth-child(1) { width: 40%; } table.reqs.ck th:nth-child(2) { wi
 .st-change { border: 0; background: transparent; color: var(--accent); cursor: pointer; font: inherit; font-size: 12px; padding: 0 4px; }
 @container (max-height: 420px) { .st-hint, .st-brand { display: none; } .st { gap: 14px; padding-top: 18px; } }
 @container (max-width: 460px) { .st-prot .pchip { display: none; } }
+
+/* Full-window mode: one window covers Float's whole window; the canvas and everything on it hide. */
+.win.full { border-radius: 0; box-shadow: none; transition: none; }
+.win.full .rz, .win.full > .label, .win.full .b-focus { display: none; }
+.win.full .bar { cursor: default; border-radius: 0; }
+body.fullwin .win:not(.full) { visibility: hidden; }
+body.fullwin #zoombar, body.fullwin .hint { display: none; }

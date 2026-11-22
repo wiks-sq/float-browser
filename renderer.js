@@ -105,6 +105,7 @@ function invalidate() { if (!dirty) { dirty = true; requestAnimationFrame(render
 
 function render() {
   dirty = false;
+  if (fullWin) { cam.x = fullWin.x; cam.y = fullWin.y; cam.z = 1; place(fullWin); }
   const { x, y, z } = cam;
   world.style.transform = `translate(${-x * z}px, ${-y * z}px) scale(${z})`;
   world.style.setProperty('--inv', 1 / z);
@@ -133,6 +134,7 @@ function stopMotion() { cancelAnimationFrame(motion); motion = 0; }
 
 // Glide the camera so world point (cx, cy) is centred at zoom tz.
 function centerOn(cx, cy, tz = cam.z, ms = 320) {
+  if (fullWin) exitFull();
   stopMotion();
   tz = clamp(tz, MIN_Z, MAX_Z);
   const w = W(), h = H();
@@ -188,7 +190,52 @@ function onWheel(e) {
 const viewCenter = () => toWorld(W() / 2, H() / 2);
 const fitZoom = (w, h, margin = 80) => Math.min(1, (W() - margin) / w, (H() - margin) / h);
 
-function focusWin(w) { centerOn(w.x + w.w / 2, w.y + w.h / 2, fitZoom(w.w, w.h)); }
+// ---- Full-window mode: one window fills Float's whole window at 100% zoom ----
+// The page isn't moved in the DOM (a <webview> would reload): render() pins the camera
+// to the window's corner and place() sizes it to the screen. Its canvas position and
+// size (w.x/y/w/h) never change, so leaving restores the canvas exactly.
+let fullWin = null, fullPrevCam = null;
+// Current key for a command, for button tooltips (refreshed when shortcuts change).
+let keyMap = {};
+const keyFor = (cmd) => keyMap[cmd] || 'no shortcut';
+function loadKeys() {
+  return window.drift.shortcuts().then((list) => {
+    keyMap = Object.fromEntries(list.map((b) => [b.cmd, (b.keys[0] || '').replace(/\+/g, ' ')]));
+    for (const w of wins) updateFullBtn(w);
+  }).catch(() => {});
+}
+loadKeys();
+function enterFull(w) {
+  if (!w) return;
+  if (fullWin) exitFull(false);
+  stopMotion();
+  fullPrevCam = { ...cam };
+  fullWin = w;
+  setActive(w, true);
+  w.el.classList.add('full');
+  document.body.classList.add('fullwin');
+  updateFullBtn(w);
+  invalidate();
+}
+function exitFull(restoreCam = true) {
+  const w = fullWin;
+  if (!w) return;
+  fullWin = null;
+  w.el.classList.remove('full');
+  document.body.classList.remove('fullwin');
+  place(w);
+  if (restoreCam && fullPrevCam) Object.assign(cam, fullPrevCam);
+  updateFullBtn(w);
+  invalidate();
+}
+const toggleFull = (w) => (fullWin && fullWin === w ? exitFull() : enterFull(w));
+function updateFullBtn(w) {
+  const b = $('.b-full', w.el), on = fullWin === w;
+  b.innerHTML = on ? FULL_EXIT_ICON : FULL_ICON;
+  b.title = on ? `Back to the canvas (${keyFor('full-win')})` : `Fill the screen with this window (${keyFor('full-win')})`;
+}
+
+function focusWin(w) { if (w === fullWin) return; centerOn(w.x + w.w / 2, w.y + w.h / 2, fitZoom(w.w, w.h)); }
 // True when the camera already shows the window the way focusWin would (or is gliding there).
 function isFocused(w) {
   if (motion) return true;
@@ -198,6 +245,7 @@ function isFocused(w) {
 
 // Bring a window into view only if it isn't comfortably visible already.
 function reveal(w) {
+  if (w === fullWin) return; // it already fills the screen
   const sx = (w.x - cam.x) * cam.z, sy = (w.y - cam.y) * cam.z;
   const visible = sx >= 0 && sy >= 0 && sx + w.w * cam.z <= W() && sy + w.h * cam.z <= H();
   if (!visible || cam.z < 0.5) focusWin(w);
@@ -338,6 +386,8 @@ function toURL(text) {
 const searchURL = (q) => config.search.replace('%s', encodeURIComponent(q));
 
 const HANDLES = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
+const FULL_ICON = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2H14v4.5M14 2 9.5 6.5M6.5 14H2V9.5M2 14l4.5-4.5"/></svg>';
+const FULL_EXIT_ICON = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6.5H9.5V2M9.5 6.5 14 2M2 9.5h4.5V14M6.5 9.5 2 14"/></svg>';
 const FOCUS_ICON = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5.5V3a1 1 0 0 1 1-1h2.5M10.5 2H13a1 1 0 0 1 1 1v2.5M14 10.5V13a1 1 0 0 1-1 1h-2.5M5.5 14H3a1 1 0 0 1-1-1v-2.5"/><circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none"/></svg>';
 
 function createWin(o = {}) {
@@ -360,6 +410,7 @@ function createWin(o = {}) {
       <input class="url" spellcheck="false" placeholder="Search or enter address">
       <button class="b-audio" hidden></button>
       <button class="b-focus" title="Focus this window (Ctrl Tab cycles windows)">${FOCUS_ICON}</button>
+      <button class="b-full"></button>
       <button class="b-close" title="Close (Ctrl W)">×</button>
     </div>
     <div class="body">
@@ -388,18 +439,20 @@ function createWin(o = {}) {
     if (e.button !== 0 || e.target.closest('button') || document.activeElement === w.input) return;
     e.preventDefault();
     const onInput = e.target === w.input;
+    if (fullWin === w) { if (onInput) { w.input.focus({ preventScroll: true }); w.input.select(); } return; }
     moveDrag(e, w, (_ev, moved) => {
       if (moved > 3) return;
       if (onInput) { w.input.focus({ preventScroll: true }); w.input.select(); } else if (w.wv) w.wv.focus({ preventScroll: true });
     });
   });
-  w.bar.addEventListener('dblclick', (e) => { if (!e.target.closest('button, input')) focusWin(w); });
+  w.bar.addEventListener('dblclick', (e) => { if (!e.target.closest('button, input') && fullWin !== w) focusWin(w); });
   w.bar.addEventListener('auxclick', (e) => { if (e.button === 1 && !e.target.closest('input')) closeWin(w); });
   w.back.onclick = () => w.wv && w.wv.goBack();
   w.fwd.onclick = () => w.wv && w.wv.goForward();
   $('.b-reload', el).onclick = (e) => reload(w, e.shiftKey);
   $('.b-close', el).onclick = () => closeWin(w);
   $('.b-focus', el).onclick = () => { setActive(w, true); focusWin(w); };
+  $('.b-full', el).onclick = () => toggleFull(w);
   w.ph.addEventListener('pointerdown', () => w.url && load(w, w.url));
   w.audioBtn.onclick = () => { w.muted = !w.muted; if (w.wcId) window.drift.setMuted(w.wcId, w.muted); updateAudio(w); };
 
@@ -422,6 +475,7 @@ function createWin(o = {}) {
   wins.push(w);
   world.appendChild(el);
   place(w);
+  updateFullBtn(w);
   showTitle(w);
   updateLock(w);
   if (w.favicon) setFavicon(w, w.favicon);
@@ -432,9 +486,10 @@ function createWin(o = {}) {
 }
 
 function place(w) {
-  const s = w.el.style;
-  s.left = w.x + 'px'; s.top = w.y + 'px'; s.width = w.w + 'px'; s.height = w.h + 'px';
-  s.setProperty('--ww', w.w);
+  const s = w.el.style, full = w === fullWin;
+  const ww = full ? W() : w.w, hh = full ? H() : w.h;
+  s.left = w.x + 'px'; s.top = w.y + 'px'; s.width = ww + 'px'; s.height = hh + 'px';
+  s.setProperty('--ww', ww);
 }
 
 // Space colour stripe + name chip (nothing for the main space unless spaces exist).
@@ -733,6 +788,7 @@ function closeWin(w) {
     if (closed.length > 30) closed.shift();
   }
   if (findWin === w) closeFind();
+  if (fullWin === w) exitFull();
   wins.splice(i, 1);
   w.el.remove();
   if (w.space === 'private' && !wins.some((o) => o.space === 'private')) window.drift.privateClosed();
@@ -1271,6 +1327,7 @@ window.drift.onCmd(({ cmd, arg, wcId }) => {
     case 'audio': if (w) { w.muted = arg.muted; w.audible = arg.audible; updateAudio(w); scheduleSave(); } return;
     case 'pause': return w && pauseWin(w, arg);
     case 'focus-win': if (w) { setActive(w, true); focusWin(w); } return;
+    case 'full-win': return toggleFull(fullWin || w);
     case 'cycle-next': return cycle(1);
     case 'cycle-prev': return cycle(-1);
     case 'reopen': return reopenClosed();
@@ -1316,7 +1373,7 @@ function saveNow() {
   const list = [...wins].filter((w) => w.space !== 'private').sort((a, b) => a.z - b.z);
   window.drift.saveSession({
     version: 1,
-    cam: { ...cam },
+    cam: fullWin && fullPrevCam ? { ...fullPrevCam } : { ...cam },
     active: active ? list.indexOf(active) : -1,
     wins: list.map(({ x, y, w, h, url, title, favicon, muted, paused, space }) => ({ x, y, w, h, url, title, favicon, muted, paused, space: space || undefined })),
   });

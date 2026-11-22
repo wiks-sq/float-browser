@@ -167,6 +167,7 @@ function contextMenu(wc, p) {
   const sep = () => t.length && t[t.length - 1].type !== 'separator' && t.push({ type: 'separator' });
   const priv = isPrivateSession(wc.session);
   t.push({ label: 'Focus This Window', accelerator: keyLabel('focus-win'), click: () => send('cmd', { cmd: 'focus-win', wcId: wc.id }) });
+  t.push({ label: 'Fill the Screen / Back to Canvas', accelerator: keyLabel('full-win'), click: () => send('cmd', { cmd: 'full-win', wcId: wc.id }) });
   t.push({ label: wc.isAudioMuted() ? 'Unmute Window' : 'Mute Window', click: () => setMuted(wc, !wc.isAudioMuted()) });
   t.push({ label: 'Pause Window (Free Memory)', click: () => pauseWindow(wc) });
   sep();
