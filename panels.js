@@ -260,7 +260,7 @@ async function refreshSiteInfo(live) {
     <div class="tabs">${['overview', 'requests', 'cookies', 'customize'].map((t) => `<button data-t="${t}" class="${t === siTab ? 'on' : ''}">${{ overview: 'Overview', requests: `Requests <em>${i.total}</em>`, cookies: 'Cookies & data', customize: 'Customize' }[t]}</button>`).join('')}</div>
     <div class="body"></div>`;
   $('.close', siPanel).onclick = closeSiteInfo;
-  for (const b of siPanel.querySelectorAll('.tabs button')) b.onclick = () => { siTab = b.dataset.t; refreshSiteInfo(); };
+  for (const b of siPanel.querySelectorAll(':scope > .tabs button')) b.onclick = () => { siTab = b.dataset.t; refreshSiteInfo(); };
   const body = $('.body', siPanel);
   ({ overview: siOverview, requests: siRequests, cookies: siCookies, customize: siCustomize })[siTab](body, i, w);
   if (live) body.scrollTop = scroll;
